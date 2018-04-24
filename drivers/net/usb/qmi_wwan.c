@@ -20,6 +20,25 @@
 #include <linux/usb/usbnet.h>
 #include <linux/usb/cdc-wdm.h>
 
+/* Agregrado para Quectel */
+struct sk_buff *qmi_wwan_tx_fixup(struct usbnet *dev, struct sk_budd *skb, gfp_t flags)
+{
+	if(dev->udev->descriptor.idVendor != cpu_to_le16(0x2C7C))
+		return skb;
+	
+	if(skb_pull(skb,ETH_HLEN))
+	{
+		return skb;
+	}
+	else
+	{
+		dev_err(&dev->intf->dev, "Packet Dropped ");
+	}
+	
+	dev_kfree_skb_any(skb);
+	return NULL;
+}
+
 /* This driver supports wwan (3G/LTE/?) devices using a vendor
  * specific management protocol called Qualcomm MSM Interface (QMI) -
  * in addition to the more common AT commands over serial interface
@@ -348,6 +367,21 @@ next_desc:
 		dev->net->dev_addr[0] &= 0xbf;	/* clear "IP" bit */
 	}
 	dev->net->netdev_ops = &qmi_wwan_netdev_ops;
+	/* Agregado para Quectel */
+	if(dev->udev->descriptor.idVendor == cpu_to_le16(0x2C7C))
+	{
+		dev_info(&intf->dev, "Quectel EC21&EC25&EC20 R2.0 work on RawIP mode\n");
+		dev->net->flags |= IFF_NOARP;
+		
+		usb_control_msg(
+			interface_to_usbdev(intf),
+			usb_sndctrlpipe(interface_to_usbdev(intf),0),
+			0x22,
+			0x21,
+			1,
+			intf->cur_altsetting->desc.nInterfaceNumber,
+			NULL,0,100);
+	}
 err:
 	return status;
 }
@@ -433,6 +467,7 @@ static const struct driver_info	qmi_wwan_info = {
 	.unbind		= qmi_wwan_unbind,
 	.manage_power	= qmi_wwan_manage_power,
 	.rx_fixup       = qmi_wwan_rx_fixup,
+	.tx_fixup	= qmi_wwan_tx_fixup,
 };
 
 #define HUAWEI_VENDOR_ID	0x12D1
