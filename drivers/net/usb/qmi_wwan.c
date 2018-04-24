@@ -451,6 +451,16 @@ static const struct driver_info	qmi_wwan_info = {
 	QMI_FIXED_INTF(vend, prod, 0)
 
 static const struct usb_device_id products[] = {
+#ifndef QMI_FIXED_INTF
+#define QMI_FIXED_INTF(vend, prod, num) \
+	.match_flags = USB_DEVICE_ID_MATCH_DEVICE | USB_DEVICE_ID_MATCH_INFO, \
+	.idVendor	= vend, \
+	.idProduct	= prod, \
+	.bInterfaceClass = 0xff, \
+	.bInterfaceSubClass = 0xff, \
+	.bInterfaceProtocol = 0xff, \
+	.driver_info = (unsigned long)&qmi_wwan_force_int##num,
+#endif
 	/* 1. CDC ECM like devices match on the control interface */
 	{	/* Huawei E392, E398 and possibly others sharing both device id and more... */
 		USB_VENDOR_AND_INTERFACE_INFO(HUAWEI_VENDOR_ID, USB_CLASS_VENDOR_SPEC, 1, 9),
@@ -539,8 +549,9 @@ static const struct usb_device_id products[] = {
 					      USB_CDC_PROTO_NONE),
 		.driver_info        = (unsigned long)&qmi_wwan_info,
 	},
-
+	
 	/* 3. Combined interface devices matching on interface number */
+	{QMI_FIXED_INTF(0x2C7C, 0x0125, 4)},	/* Quectel EC25 */
 	{QMI_FIXED_INTF(0x0408, 0xea42, 4)},	/* Yota / Megafon M100-1 */
 	{QMI_FIXED_INTF(0x05c6, 0x7000, 0)},
 	{QMI_FIXED_INTF(0x05c6, 0x7001, 1)},
